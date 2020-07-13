@@ -2,6 +2,7 @@ version: '3'
 services:
   lnkr:
     build: .
+    image: josephthomashines/lnkr
     ports:
       - "3333:3333"
     volumes:
