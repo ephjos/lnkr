@@ -12,18 +12,36 @@ import (
 )
 
 var db *bolt.DB
+
 const BUCKET = "bindings"
 const DB_FILE = "bolt/bindings.db"
+var REQ = map[string]string {
+	"gh": "github.com/ephjos",
+}
+
+func StoreMap(m map[string]string) {
+	for k,v := range m {
+		err := db.Update(func(tx *bolt.Tx) error {
+			b := CreateBindingsBucket(tx)
+			err := b.Put([]byte(k), []byte(EnsureHttpDest(v)))
+			return err
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
 
 func EnsureHttpDest(dest string) string {
-	match, err := regexp.Match("^http[s]?://.*$",[]byte(dest))
+	match, err := regexp.Match("^http[s]?://.*$", []byte(dest))
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if !match {
-		dest = "http://"+dest
+		dest = "http://" + dest
 	}
 
 	return dest
@@ -74,15 +92,15 @@ func GetDestFromSource(src string) (string, bool) {
 func UrlShortener(w http.ResponseWriter, r *http.Request) {
 	src := mux.Vars(r)["src"]
 
-	switch(r.Method) {
+	switch r.Method {
 	case "GET":
 		if dest, ok := GetDestFromSource(src); ok {
-			log.Println("Redirecting to " + dest)
-			http.Redirect(w,r,dest,http.StatusSeeOther)
+			log.Println("redirecting to " + dest)
+			http.Redirect(w, r, dest, http.StatusSeeOther)
 			return
 		} else {
 			log.Println(src + " not bound")
-			http.Redirect(w,r,"/",http.StatusNotFound)
+			http.Redirect(w, r, "/", http.StatusNotFound)
 			return
 		}
 
@@ -122,6 +140,8 @@ func NewRouter() *mux.Router {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	StoreMap(REQ)
 
 	FileHandler := http.FileServer(http.Dir("./static"))
 

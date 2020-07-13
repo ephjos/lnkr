@@ -14,7 +14,7 @@
     </script>
   </head>
 
-  <body>
+  <body onload="updatePrev()">
     <header>
       <div class="container">
         <div class="row">
@@ -51,16 +51,21 @@
             <h3>shorten url</h3>
           </div>
           <div class="row">
+            <p class="text-white" id="prev">
+            </p>
+          </div>
+          <div class="row">
             <div class="input-group mt-3 mb-3 pl-3 pr-3">
               <div class="input-group-prepend">
                 <span class="input-group-text" id="basic-addon1">src&nbsp;</span>
               </div>
               <input
+                onkeyup="updatePrev(event)"
                 type="text"
                 id="src"
                 class="form-control"
-                placeholder="short_link"
-                aria-label="short_link"
+                placeholder="books"
+                aria-label="books"
                 aria-describedby="basic-addon1">
             </div>
             <div class="input-group mb-3 pl-3 pr-3">
@@ -68,11 +73,12 @@
                 <span class="input-group-text" id="basic-addon1">dest</span>
               </div>
               <input
+                onkeyup="updatePrev(event)"
                 type="text"
                 id="dest"
                 class="form-control"
-                placeholder="target_link"
-                aria-label="target_link"
+                placeholder="gutenberg.org"
+                aria-label="gutenberg.org"
                 aria-describedby="basic-addon1">
             </div>
           </div>
@@ -88,11 +94,28 @@
   </body>
 
   <script type="text/javascript">
-    var MSG = document.getElementById("msg")
+    let MSG = document.getElementById("msg")
+    let SRC = document.getElementById("src")
+    let DEST = document.getElementById("dest")
+    let PREV = document.getElementById("prev")
+    let BASE = window.location.href
+
+    let updatePrev = (e) => {
+      let src = SRC.value
+      let dest = DEST.value
+
+      if (src == "") { src = "???" }
+      if (dest == "") { dest = "???" }
+
+      PREV.innerHTML =
+        `Link ${BASE}<b>${src}</b> -> http://<b>${dest}</b>`
+
+      if (e && e.keyCode == 13) {
+        createLink()
+      }
+    }
 
     let createLink = () => {
-      let SRC = document.getElementById("src")
-      let DEST = document.getElementById("dest")
       let src = SRC.value
       let dest = DEST.value
 
@@ -112,7 +135,9 @@
           case 201:
             SRC.value = ""
             DEST.value = ""
-            MSG.innerText = `✅  created binding of ${src} -> ${dest}`
+            MSG.innerText =
+              `✅  created binding of ${BASE}${src} -> http://${dest}`
+            updatePrev()
             break
           case 409:
             MSG.innerText = `❌  src already bound`

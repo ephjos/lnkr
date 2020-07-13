@@ -12,7 +12,7 @@ func main() {
 	defer lnkr.Close()
 
 	port := ":3333"
-	log.Println("Listening on " + port)
+	log.Println("listening on " + port)
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal(err)
