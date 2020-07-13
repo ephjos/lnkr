@@ -1,0 +1,9 @@
+version: '3'
+services:
+  lnkr:
+    build: .
+    ports:
+      - "3333:3333"
+    volumes:
+      - /var/lnkrdb:/build/bolt
+    restart: always
