@@ -1,6 +1,7 @@
 version: '3'
 services:
   lnkr:
+    container_name: lnkr
     build: .
     image: josephthomashines/lnkr
     ports:

@@ -1,6 +1,7 @@
 version: '3'
 services:
   lnkr:
+    container_name: lnkr
     image: josephthomashines/lnkr
     ports:
       - "3333:3333"
