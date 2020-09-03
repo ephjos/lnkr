@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 
 	"github.com/boltdb/bolt"
@@ -92,41 +93,61 @@ func GetDestFromSource(src string) (string, bool) {
 func UrlShortener(w http.ResponseWriter, r *http.Request) {
 	src := mux.Vars(r)["src"]
 
-	switch r.Method {
-	case "GET":
-		if dest, ok := GetDestFromSource(src); ok {
-			log.Println("redirecting to " + dest)
-			http.Redirect(w, r, dest, http.StatusSeeOther)
-			return
-		} else {
-			log.Println(src + " not bound")
-			http.Redirect(w, r, "/", http.StatusNotFound)
-			return
-		}
-
-	case "POST":
-		var dest struct {
-			Url string
-		}
-
-		err := json.NewDecoder(r.Body).Decode(&dest)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		err = BindSrcDest(src, dest.Url)
-		if err != nil {
-			log.Println("failed to bind " + src + ", already bound")
-			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		log.Println("bound " + src + " to " + dest.Url)
-		w.WriteHeader(http.StatusCreated)
+	var eSrc, cSrc, cDest string
+	var err error
+	if eSrc, err = url.PathUnescape(src); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
+	}
+	cSrc = url.PathEscape(eSrc)
+
+	switch r.Method {
+		case "GET":
+			if dest, ok := GetDestFromSource(cSrc); ok {
+				log.Printf("redirecting to %s\n", dest)
+				http.Redirect(w, r, dest, http.StatusSeeOther)
+				return
+			} else {
+				log.Printf("%s not bound\n", cSrc)
+				http.Redirect(w, r, "/", http.StatusNotFound)
+				return
+			}
+
+		case "POST":
+			var dest struct {
+				Url string
+			}
+
+			err := json.NewDecoder(r.Body).Decode(&dest)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			cDest = dest.Url
+			log.Printf("Trying to bind %s to %s\n", cSrc, cDest)
+			_, err = http.Get(fmt.Sprintf("http://%s", cDest))
+			if err != nil {
+				log.Println(err)
+				log.Printf("%s is not a valid url\n", cDest)
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			err = BindSrcDest(cSrc, dest.Url)
+			if err != nil {
+				log.Printf("failed to bind %s, already bound\n", cSrc)
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			log.Printf("%s bound to %s\n", cSrc, cDest)
+			w.WriteHeader(http.StatusCreated)
+			return
 
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -149,11 +170,11 @@ func NewRouter() *mux.Router {
 	r.HandleFunc("/", FileHandler.ServeHTTP)
 	r.PathPrefix("/static/").Handler(
 		http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-		r.HandleFunc("/{src}", UrlShortener)
+	r.HandleFunc("/{src}", UrlShortener)
 
 		return r
-	}
+}
 
-	func Close() {
-		db.Close()
-	}
+func Close() {
+	db.Close()
+}
